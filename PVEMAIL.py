@@ -21,8 +21,10 @@ imap.login(USERNAME, PASSWORD)
 
 
 def PVEMAIL_MoveEMailToArchiveFolder(msgId):
-
-    imap.copy(str(msgId), "OldPhoneVerEmails")
+    # if you get an 'can't concat int to bytes' error, this means msgId needs to be a string **********
+    imap.copy(str(msgId), PVEMAIL_VAR_SARCHIVE_EMAIL_FOLDER_NAME)
+    imap.store(str(msgId), '+FLAGS', '\\Deleted')
+    imap.expunge()
 
 
 def PVEMAIL_Close_Connection_To_EmailServer():
