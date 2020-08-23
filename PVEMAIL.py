@@ -4,28 +4,62 @@ from email.header import decode_header
 import os
 from datetime import datetime
 
-PVEMAIL_VAR_SAVEFORMROOTDIR = r"C:\app\PHONEVER\SAVEDFORMS"
-IMAP4_SERVER_NAME = "imap.mail.com"
-PVEMAIL_VAR_SARCHIVE_EMAIL_FOLDER_NAME = "OldPhoneVerEmails"
+DBUG = False
+
+#=================================[ VARIABLES USED ONLY IN THESE FUNCTIONS ]=======================
+IMAP4_SERVER_NAME                           = "imap.mail.com"
+PVEMAIL_TEXT_IN_SUBJECT_MUST_CONTAIN_TXT    = "Telephone and Wireless Usage"
+PVEMAIL_VAR_ARCHIVE_EMAIL_FOLDER_NAME       = "OldPhoneVerEmails"
+PVEMAIL_VAR_NOT_PHONEVER_EMAIL_FOLDER_NAME  = "NotPhoneVerEmails"
 # account credentials
 USERNAME = "nbeaman@mail.com"
 PASSWORD = "5eaF00d!@"
 
-DBUG = False
-
-# create an IMAP4 class with SSL 
+# create an IMAP4 class with SSL.  'imap' is used by most of the functions below 
 imap = imaplib.IMAP4_SSL(IMAP4_SERVER_NAME)
 
 # authenticate
 imap.login(USERNAME, PASSWORD)
+#===================================================================================================
+
+#=================================[ VARIABLES USED IN MAIN PROGRAM ]================================
+PVEMAIL_VAR_SAVEFORMROOTDIR                 = r"C:\app\PHONEVER\SAVEDFORMS"
+#===================================================================================================
 
 
-def PVEMAIL_MoveEMailToArchiveFolder(msgId):
-    # if you get an 'can't concat int to bytes' error, this means msgId needs to be a string **********
-    imap.copy(str(msgId), PVEMAIL_VAR_SARCHIVE_EMAIL_FOLDER_NAME)
-    imap.store(str(msgId), '+FLAGS', '\\Deleted')
+def PVEMAIL_GetEmailForIndex(i):
+    # Using "try" b/c if there are no more emails in the Inbox, this would through an error
+    # if 'fetch' does cuase an error, it will go to 'except:' instead - returning 'NONE' to
+    # the main program so that it may deal with it
+    # Remember that 'imap' is a global variable in this file defined above
+    try:
+        # retreive the email into the variable 'msg'
+        res, msg = imap.fetch(str(i), "(RFC822)")
+        # loop through 'msg' to find the actual email
+        for response in msg:
+            # Is msg in this format (text1, text2, text3, etc..) which is a "tuple" in python
+            # Then this is the email part of msg
+            if isinstance(response, tuple):
+                vReturn = email.message_from_bytes(response[1])
+        return vReturn
+    except:
+        # No more emails found, send 'NONE' to calling program
+        return 'NONE'
+
+def PVEMAIL_MoveEMailTo_ArchiveFolder_UnderInbox(i):
+    # if you get a 'can't concat int to bytes' error, this means msgId needs to be a string
+    # that is why the use of the 'str' function to convert it to a string.  
+    imap.copy(str(i), PVEMAIL_VAR_ARCHIVE_EMAIL_FOLDER_NAME)
+    # Mark email as 'Deleted'
+    imap.store(str(i), '+FLAGS', '\\Deleted')
+    # Delete all emails Marked as 'Deleted'
     imap.expunge()
 
+
+def PVEMAIL_MoveEMailTo_NotPhoneVerEmails_UnderInbox(i):
+    imap.copy(str(i), PVEMAIL_VAR_NOT_PHONEVER_EMAIL_FOLDER_NAME)
+    imap.store(str(i), '+FLAGS', '\\Deleted')
+    imap.expunge()
 
 def PVEMAIL_Close_Connection_To_EmailServer():
     imap.close()
@@ -116,22 +150,9 @@ def PVEMAIL_getUsernameFromBody( body, EmpName):
     else:
         return (EmpUsername)
 
-def PVEMAIL_GetEmailForIndex(i):
-    # Is msg in this format (text1, text2, text3, etc..) wich is a "tuple" in python
-    # Then this is the email part of msg
-
-    res, msg = imap.fetch(str(i), "(RFC822)")
-    
-
-    for response in msg:
-        if isinstance(response, tuple):
-            vReturn = email.message_from_bytes(response[1])
-
-    return vReturn
-
 def PVEMAIL_This_Is_A_Phone_Verification_Email( vEmail):
     # LATER: IF THE SUBJECT DOES NOT CONTAIN "Telephone and Wireless Usage" THEN IT IS NOT A PHONEVAR EMAIL
-    if vEmail.find("Telephone and Wireless Usage") > 0:
+    if vEmail.find(PVEMAIL_TEXT_IN_SUBJECT_MUST_CONTAIN_TXT) > 0:
         return True
     else:
         return False

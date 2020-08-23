@@ -3,13 +3,21 @@ import os
 from PDFOCR import PDFOCR_BillPeriod
 from PVEMAIL import PVEMAIL_GetEmailForIndex, PVEMAIL_GetAllEmailsInINBOX, PVEMAIL_getSubject,\
    PVEMAIL_This_Is_A_Phone_Verification_Email, PVEMAIL_GetEmailBody, PVEMAIL_GetFileNameOfAttachment, PVEMAIL_GetEmailAttachment, PVEMAIL_getEmpFullNameFromBody,\
-   PVEMAIL_getUsernameFromBody, PVEMAIL_AppendDateTimeToFileName, PVEMAIL_saveAttachment, PVEMAIL_Close_Connection_To_EmailServer, PVEMAIL_MoveEMailToArchiveFolder,\
-   PVEMAIL_VAR_SAVEFORMROOTDIR,\
-   PVEMAIL_VAR_SARCHIVE_EMAIL_FOLDER_NAME
+   PVEMAIL_getUsernameFromBody, PVEMAIL_AppendDateTimeToFileName, PVEMAIL_saveAttachment, PVEMAIL_Close_Connection_To_EmailServer, PVEMAIL_MoveEMailTo_ArchiveFolder_UnderInbox, PVEMAIL_MoveEMailTo_NotPhoneVerEmails_UnderInbox,\
+   PVEMAIL_VAR_SAVEFORMROOTDIR
 
-
+from TELLMOM import TELLMOM
 
 DBUG = 1
+
+# get ALL emails in the inbox and put them in an array (messages[])
+status, messages = PVEMAIL_GetAllEmailsInINBOX()
+
+# Just get the last three emails
+N = 3
+# total number of emails (What does this do?????)
+messages = int(messages[0])
+
 
 # check to see if the directory passed in (dir) exists, if it does not it is created
 def checkDirectory(dir):
@@ -17,47 +25,22 @@ def checkDirectory(dir):
         # make a folder
         os.mkdir(dir)
 
-#===============================================================================
-# for debugging.  This is used to display that something went wrong
-def TELLMOM(subject, what):
-    print("I AM TELLING! This is not a Phone Verification Email." + " SUBJECT: " + subject + " >>" + what + "<<")
-#===============================================================================
 
-# account credentials
-username = "nbeaman@mail.com"
-password = "5eaF00d!@"
-
-# create an IMAP4 class with SSL 
-#imap = PVEMAIL_CreateAnIMAP4Class
-# authenticate
-#AuthenticateResponse = PVEMAIL_UsernamePasswordAuthenticateEmailServer
-#print("AuthenticateResponse: " + str(AuthenticateResponse))
-
-status, messages = PVEMAIL_GetAllEmailsInINBOX()
-
-# get ALL emails in the inbox and put them in an array (messages[])
-#status, messages = imap.select("INBOX")
-# for testing, just get the last three emails
-N = 3
-# total number of emails (What does this do?????)
-messages = int(messages[0])
-
-
-
-
-
-# loops through each email in the array (messages) starting from the most recent message (counts backwards down to 1)
+# loops through each email in the array (messages) starting from the most recent message (counts backwards from N down to 1)
+# the variable "i" is esentially the email Unique Identifier (UID) **********************
 for i in range(messages, messages-N, -1): # DOES THIS N TIMES
     
-    # fetch the email message by index in the array (messages) starting from last/highest index
-    #res, msg = imap.fetch(str(i), "(RFC822)")
-
+    # fetch the email message by index in the array (messages) starting from highest "N" index
     EMail = PVEMAIL_GetEmailForIndex(i)
 
-    # LATER: IF THE SUBJECT DOES NOT CONTAIN "Telephone and Wireless Usage" THEN DELETE IT FROM THE INBOX
+    if (EMail == 'NONE'): 
+        if DBUG: print('NO MORE EMAILS FOUND IN INBOX')
+        break         # EXIT out of for i loop
+
+    # Get the current EMail's "Subject"
     SUBJECT = PVEMAIL_getSubject(EMail)
     
-
+    # If the SUBJECT does not contain the text in PVEMAIL_TEXT_IN_SUBJECT_MUST_CONTAIN_TXT, then it is not a phone verification email
     if PVEMAIL_This_Is_A_Phone_Verification_Email(SUBJECT):
         
         BODY = PVEMAIL_GetEmailBody(EMail)
@@ -73,16 +56,15 @@ for i in range(messages, messages-N, -1): # DOES THIS N TIMES
         checkDirectory(PERMINENTsaveDir)
         PVEMAIL_saveAttachment(PERMINENTsaveDir, PVEMAIL_AppendDateTimeToFileName(filename), AttachedFilePayload)
 
-        PVEMAIL_MoveEMailToArchiveFolder(i)
+        PVEMAIL_MoveEMailTo_ArchiveFolder_UnderInbox(i)
 
-        # prints a devider b/t messages/emails
-        if DBUG: print("="*100)
-    
     else:
-
-        if DBUG: print("MAIN: Not A Phone Verification Email: Should Delete")
-        # prints a devider b/t messages/emails
-        if DBUG: print("="*100)
+        # This EMail is not a phone verification email, Move it, then delete it from the Inbox
+        if DBUG: print("MAIN: Not A Phone Verification Email: Moved to NotPhoneVerEmails folder under Inbox, then Deleted from Inbox")
+        PVEMAIL_MoveEMailTo_NotPhoneVerEmails_UnderInbox(i)
+    
+    # prints a devider b/t messages/emails
+    if DBUG: print("="*100)
 
 PVEMAIL_Close_Connection_To_EmailServer()
 
