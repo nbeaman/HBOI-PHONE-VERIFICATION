@@ -2,6 +2,7 @@ import imaplib
 import email
 from email.header import decode_header
 import os
+from datetime import datetime
 
 from PDFOCR import PDFOCR_BillPeriod
 
@@ -27,11 +28,22 @@ def checkDirectory(dir):
 # saves the file (payload) to the directory (SAVEFORMROOTDIR) with the filename (filename)
 def saveAttachment(SAVEFORMROOTDIR, filename, payload):
     filepath=os.path.join(SAVEFORMROOTDIR, filename)
-    print("FILE PATH: " + filepath)
+    if DBUG: print("FILE PATH: " + filepath)
     # download attachment and save it
     open(filepath, "wb").write(payload)
 
+def AppendDateTimeToFileName(filename):
+    now = datetime.now()
+    StrDateTime = now.strftime("%m-%d-%Y(%H-%M-%S)")
 
+    # find last occurrence of "." in filename
+    DotInext = filename.rfind(".")
+    # seperate them into "username.znumber.raw" and ".pdf"
+    leftOfDot = filename[:DotInext]
+    rightOfDot = filename[DotInext:]
+    # insert Date & Time into filename
+    newFileName = leftOfDot + "-" + StrDateTime + rightOfDot
+    return newFileName
 
 def getEmpFullNameFromBody( body ):
 
@@ -80,13 +92,12 @@ def getUsernameFromBody( body, EmpName):
     else:
         return (EmpUsername)
 
-# for debugging.  This is used to display that something went wrong
-def TELLMOM(subject, what):
-    print("I AM TELLING! This is not a Phone Verification Email." + " SUBJECT: " + subject + " >>" + what + "<<")
-
-def GetEmailPartOf(msg):
+def GetEmailForIndex(i):
     # Is msg in this format (text1, text2, text3, etc..) wich is a "tuple" in python
     # Then this is the email part of msg
+     
+    res, msg = imap.fetch(str(i), "(RFC822)")
+
     for response in msg:
         if isinstance(response, tuple):
             vReturn = email.message_from_bytes(response[1])
@@ -99,6 +110,58 @@ def This_Is_A_Phone_Verification_Email( vEmail):
     else:
         return False
 
+def GetEmailBody(EMail):
+    body=""
+    # run through each part of the email in this for loop
+    for part in EMail.walk():     #usually has 5 parts to iterate through
+        # extract content type of the current email "part"
+        content_type = part.get_content_type()
+        content_disposition = str(part.get("Content-Disposition"))
+        if DBUG: print("content_type: " + content_type + " || " + "content_disposition: " + content_disposition)
+
+        try:
+            # get the email body if this part has it
+            body = part.get_payload(decode=True).decode()
+        except:
+            pass
+
+    return body
+
+def GetFileNameOfAttachment(EMail):
+    # run through each part of the email in this for loop
+    for part in EMail.walk():     #usually has 5 parts to iterate through
+        # extract content type of the current email "part"
+        content_type = part.get_content_type()
+        content_disposition = str(part.get("Content-Disposition"))
+        if DBUG: print("content_type: " + content_type + " || " + "content_disposition: " + content_disposition)
+
+        if "attachment" in content_disposition:
+            # get filename
+            filename = part.get_filename()
+
+    return filename
+
+def GetEmailAttachment(EMail):
+    # run through each part of the email in this for loop
+    for part in EMail.walk():     #usually has 5 parts to iterate through
+        # extract content type of the current email "part"
+        content_type = part.get_content_type()
+        content_disposition = str(part.get("Content-Disposition"))
+        if DBUG: print("content_type: " + content_type + " || " + "content_disposition: " + content_disposition)
+
+        if "attachment" in content_disposition:
+            # get filename
+            filename = part.get_filename()
+            AttachedFilePayload = part.get_payload(decode=True)
+
+    return AttachedFilePayload
+
+
+#===============================================================================
+# for debugging.  This is used to display that something went wrong
+def TELLMOM(subject, what):
+    print("I AM TELLING! This is not a Phone Verification Email." + " SUBJECT: " + subject + " >>" + what + "<<")
+#===============================================================================
 
 # account credentials
 username = "nbeaman@mail.com"
@@ -116,54 +179,36 @@ N = 3
 # total number of emails (What does this do?????)
 messages = int(messages[0])
 
+
+
+
+
 # loops through each email in the array (messages) starting from the most recent message (counts backwards down to 1)
 for i in range(messages, messages-N, -1): # DOES THIS N TIMES
     
     # fetch the email message by index in the array (messages) starting from last/highest index
-    res, msg = imap.fetch(str(i), "(RFC822)")
+    #res, msg = imap.fetch(str(i), "(RFC822)")
 
-    EMail = GetEmailPartOf(msg)
+    EMail = GetEmailForIndex(i)
 
     # LATER: IF THE SUBJECT DOES NOT CONTAIN "Telephone and Wireless Usage" THEN DELETE IT FROM THE INBOX
     SUBJECT = getSubject(EMail)
     
 
     if This_Is_A_Phone_Verification_Email(SUBJECT):
-
-        filename = ""
-        BODY = ""
         
-        # run through each part of the email in this for loop
-        for part in EMail.walk():     #usually has 5 parts to iterate through
-            # extract content type of the current email "part"
-            content_type = part.get_content_type()
-            content_disposition = str(part.get("Content-Disposition"))
-            if DBUG: print("content_type: " + content_type + " || " + "content_disposition: " + content_disposition)
+        BODY = GetEmailBody(EMail)
+        filename = GetFileNameOfAttachment(EMail)
+        AttachedFilePayload = GetEmailAttachment(EMail)
 
-            try:
-                # get the email body if this part has it
-               body = part.get_payload(decode=True).decode()
-               BODY = body
-            except:
-                pass
-
-            if "attachment" in content_disposition:
-                # get filename
-                filename = part.get_filename()
-
-            #print(BODY)
-
-            # 5th pass through "Walk()", meaning we have all we need
-            # PROCESS THE INFORMATION AND ENTER INTO DATABASE
-            if filename:
-                print("FILENAME=>" + filename + "<")
-                FULLNAME = getEmpFullNameFromBody(BODY)
-                USERNAME = getUsernameFromBody( BODY, FULLNAME)
-                BILLPERIOD = PDFOCR_BillPeriod(filename, part.get_payload(decode=True))
-                print("BILLPERIOD = >" + BILLPERIOD + "<")
-                PERMINENTsaveDire = SAVEFORMROOTDIR + '\\' + BILLPERIOD
-                checkDirectory(PERMINENTsaveDire)
-                saveAttachment(PERMINENTsaveDire, filename, part.get_payload(decode=True))
+        print("FILENAME=>" + filename + "<")
+        FULLNAME = getEmpFullNameFromBody(BODY)
+        USERNAME = getUsernameFromBody( BODY, FULLNAME)
+        BILLPERIOD = PDFOCR_BillPeriod(filename, AttachedFilePayload)
+        print("BILLPERIOD = >" + BILLPERIOD + "<")
+        PERMINENTsaveDir = SAVEFORMROOTDIR + '\\' + BILLPERIOD
+        checkDirectory(PERMINENTsaveDir)
+        saveAttachment(PERMINENTsaveDir, AppendDateTimeToFileName(filename), AttachedFilePayload)
 
         # prints a devider b/t messages/emails
         if DBUG: print("="*100)

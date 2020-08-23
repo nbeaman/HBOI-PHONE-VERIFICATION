@@ -104,5 +104,6 @@ def PDFOCR_BillPeriod(PDFFILENAME, PAYLOAD):
     BillPeriod = BillPeriod.replace(chr(10),"")
     BillPeriod = BillPeriod.replace(chr(13),"")
 
-    PDFOCR_DeleteAllTempFiles
+    PDFOCR_DeleteAllTempFiles(TEMPFOLDER)
+
     return BillPeriod
