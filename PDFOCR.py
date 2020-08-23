@@ -75,7 +75,15 @@ def PDFOCR_DeleteAllTempFiles(TEMPF):
         except Exception as e:
             print('PDFOCR: Failed to delete %s. Reason: %s' % (file_path, e))
 
-def PDFOCR_BillPeriod(PDFFILENAME):
+def saveAttachmentForOCR(saveDir, filename, payload):
+    filepath=os.path.join(saveDir, filename)
+    print("FILE: PDFOCR: FILE PATH: " + filepath)
+    # download attachment and save it
+    open(filepath, "wb").write(payload)
+
+def PDFOCR_BillPeriod(PDFFILENAME, PAYLOAD):
+
+    saveAttachmentForOCR(TEMPFOLDER, PDFFILENAME, PAYLOAD)
 
     pil_images = pdftopil(PDFFILENAME)
     pdfText = save_images(pil_images, PDFFILENAME)

@@ -3,9 +3,10 @@ import email
 from email.header import decode_header
 import os
 
-DBUG = False
-saveDir = "TEST"
+from PDFOCR import PDFOCR_BillPeriod
 
+DBUG = 1
+SAVEFORMROOTDIR = r"C:\app\PHONEVER\SAVEDFORMS"
 
 # returns the subject from a message
 def getSubject(msg):
@@ -14,6 +15,7 @@ def getSubject(msg):
     if isinstance(subject, bytes):
         # if it's a bytes, decode to str
         subject = subject.decode()
+    if DBUG: print("SUBJECT: " + subject)
     return subject
 
 # check to see if the directory passed in (dir) exists, if it does not it is created
@@ -22,9 +24,9 @@ def checkDirectory(dir):
         # make a folder
         os.mkdir(dir)
 
-# saves the file (payload) to the directory (saveDir) with the filename (filename)
-def saveAttachment(saveDir, filename, payload):
-    filepath=os.path.join(saveDir, filename)
+# saves the file (payload) to the directory (SAVEFORMROOTDIR) with the filename (filename)
+def saveAttachment(SAVEFORMROOTDIR, filename, payload):
+    filepath=os.path.join(SAVEFORMROOTDIR, filename)
     print("FILE PATH: " + filepath)
     # download attachment and save it
     open(filepath, "wb").write(payload)
@@ -40,19 +42,22 @@ def getEmpFullNameFromBody( body ):
 
     StringBeforeFullNameINDEX = body.find(StringBeforeFullName)
     tempTxt = body[StringBeforeFullNameINDEX + len(StringBeforeFullName) :StringBeforeFullNameINDEX + 50]
-    if DBUG: print("getEmpFullNameFromBody: StringBeforeFullname is '" + StringBeforeFullName + "' located at " + str(StringBeforeFullNameINDEX) + " characters in of Body. tempTxt=>" + tempTxt + "<")
+    if DBUG == 2: print("getEmpFullNameFromBody: StringBeforeFullname is '" + StringBeforeFullName + "' located at " + str(StringBeforeFullNameINDEX) + " characters in of Body. tempTxt=>" + tempTxt + "<")
 
     StringAfterFullNameINDEX = tempTxt.find(StringAfterFullName)
     EmpFullName = tempTxt[0:StringAfterFullNameINDEX-1]
 
     EmpFullName = EmpFullName.strip()
 
-    if DBUG: print("getEmpFullNameFromBody: StringAfterFullName is '" + StringAfterFullName + "' located at " + str(StringAfterFullNameINDEX) + " characters in of Body. EmpFullName=>" + EmpFullName + "<")
+    if DBUG == 2: print("getEmpFullNameFromBody: StringAfterFullName is '" + StringAfterFullName + "' located at " + str(StringAfterFullNameINDEX) + " characters in of Body. EmpFullName=>" + EmpFullName + "<")
 
     if len(EmpFullName) < 2:
         return False
     else:
         return (EmpFullName)
+
+    if DBUG: print("Full Name from email body: >" + FULLNAME + "<  Username from email body: >" + USERNAME + "<")
+
 
 def getUsernameFromBody( body, EmpName):
 
@@ -61,14 +66,14 @@ def getUsernameFromBody( body, EmpName):
 
     StringBeforeINDEX = body.find(StringBeforeUsername)
     tempTxt = body[StringBeforeINDEX + len(StringBeforeUsername) :StringBeforeINDEX + 50]
-    print("getUsernameFromBody: StringBeforeUsername is '" + StringBeforeUsername + "' located at " + str(StringBeforeINDEX) + " characters in of Body. tempTxt=>" + tempTxt + "<")
+    if DBUG == 2: print("getUsernameFromBody: StringBeforeUsername is '" + StringBeforeUsername + "' located at " + str(StringBeforeINDEX) + " characters in of Body. tempTxt=>" + tempTxt + "<")
 
     StringAfterINDEX = tempTxt.find(StringAfterUsername)
     EmpUsername = tempTxt[0:StringAfterINDEX]
 
     EmpUsername = EmpUsername.strip()
 
-    print("getUsernameFromBody: StringAfterUsername is '" + StringAfterUsername + "' located at " + str(StringAfterINDEX) + " characters in of Body. EmpUsername=>" + EmpUsername + "<")
+    if DBUG == 2: print("getUsernameFromBody: StringAfterUsername is '" + StringAfterUsername + "' located at " + str(StringAfterINDEX) + " characters in of Body. EmpUsername=>" + EmpUsername + "<")
 
     if len(EmpUsername) < 2:
         return False
@@ -78,6 +83,22 @@ def getUsernameFromBody( body, EmpName):
 # for debugging.  This is used to display that something went wrong
 def TELLMOM(subject, what):
     print("I AM TELLING! This is not a Phone Verification Email." + " SUBJECT: " + subject + " >>" + what + "<<")
+
+def GetEmailPartOf(msg):
+    # Is msg in this format (text1, text2, text3, etc..) wich is a "tuple" in python
+    # Then this is the email part of msg
+    for response in msg:
+        if isinstance(response, tuple):
+            vReturn = email.message_from_bytes(response[1])
+            return vReturn
+
+def This_Is_A_Phone_Verification_Email( vEmail):
+    # LATER: IF THE SUBJECT DOES NOT CONTAIN "Telephone and Wireless Usage" THEN IT IS NOT A PHONEVAR EMAIL
+    if vEmail.find("Telephone and Wireless Usage") > 0:
+        return True
+    else:
+        return False
+
 
 # account credentials
 username = "nbeaman@mail.com"
@@ -96,68 +117,62 @@ N = 3
 messages = int(messages[0])
 
 # loops through each email in the array (messages) starting from the most recent message (counts backwards down to 1)
-for i in range(messages, messages-N, -1):
+for i in range(messages, messages-N, -1): # DOES THIS N TIMES
     
     # fetch the email message by index in the array (messages) starting from last/highest index
     res, msg = imap.fetch(str(i), "(RFC822)")
-    for response in msg:
-        # Is msg in this format (text1, text2, text3, etc..) wich is a "tuple" in python
-        # for example (email format, subject and body, attachment)
-        # If it's not, then this is not a phone verification email, so TELLMOM()
-        if isinstance(response, tuple):
-            # parse a bytes email into a message object
-            msg = email.message_from_bytes(response[1])
 
-            # LATER: IF THE SUBJECT DOES NOT CONTAIN "Telephone and Wireless Usage" THEN DELETE IT FROM THE INBOX
-            SUBJECT = getSubject(msg)
-            if DBUG: print("SUBJECT: " + SUBJECT)
+    EMail = GetEmailPartOf(msg)
 
-            # if the email message is multipart (NOT SURE WHAT THAT MEANS?), if no
-            # then this is not a phone verification email, so TELLMOM()
-            if msg.is_multipart():
-                # iterate over email parts
-                filename = ""
-                BODY = ""
-                # run through each part of the email in this for loop
-                for part in msg.walk():     #usually has 5 parts to iterate through
-                    # extract content type of the current email "part"
-                    content_type = part.get_content_type()
-                    content_disposition = str(part.get("Content-Disposition"))
-                    if DBUG: print("content_type: " + content_type + " || " + "content_disposition: " + content_disposition)
+    # LATER: IF THE SUBJECT DOES NOT CONTAIN "Telephone and Wireless Usage" THEN DELETE IT FROM THE INBOX
+    SUBJECT = getSubject(EMail)
+    
 
-                    try:
-                        # get the email body if this part has it
-                        body = part.get_payload(decode=True).decode()
-                        BODY = body
-                    except:
-                        pass
+    if This_Is_A_Phone_Verification_Email(SUBJECT):
 
-                    if "attachment" in content_disposition:
-                        # get filename
-                        filename = part.get_filename()
+        filename = ""
+        BODY = ""
+        
+        # run through each part of the email in this for loop
+        for part in EMail.walk():     #usually has 5 parts to iterate through
+            # extract content type of the current email "part"
+            content_type = part.get_content_type()
+            content_disposition = str(part.get("Content-Disposition"))
+            if DBUG: print("content_type: " + content_type + " || " + "content_disposition: " + content_disposition)
 
-            else:
-                TELLMOM(SUBJECT, "NOT MULTIPART MSG")
-                # THIS REALLY SHOULD BE REMOVE THE EMAIL FROM THE INBOX IF THE SUBJECT DOES NOT SAY IT IS A PHONE VERIFICATION EMAIL
+            try:
+                # get the email body if this part has it
+               body = part.get_payload(decode=True).decode()
+               BODY = body
+            except:
+                pass
 
-            if filename:
-                # if there is an attachment in the email
-                checkDirectory(saveDir)
-                saveAttachment(saveDir, filename, part.get_payload(decode=True))
-
-            else:
-                TELLMOM(SUBJECT, "NO ATTACHMENT")
+            if "attachment" in content_disposition:
+                # get filename
+                filename = part.get_filename()
 
             #print(BODY)
 
+            # 5th pass through "Walk()", meaning we have all we need
+            # PROCESS THE INFORMATION AND ENTER INTO DATABASE
             if filename:
+                print("FILENAME=>" + filename + "<")
                 FULLNAME = getEmpFullNameFromBody(BODY)
                 USERNAME = getUsernameFromBody( BODY, FULLNAME)
-                #if DBUG: print("Full Name from email body: " + FULLNAME + "  Username from email body: " + USERNAME)
+                BILLPERIOD = PDFOCR_BillPeriod(filename, part.get_payload(decode=True))
+                print("BILLPERIOD = >" + BILLPERIOD + "<")
+                PERMINENTsaveDire = SAVEFORMROOTDIR + '\\' + BILLPERIOD
+                checkDirectory(PERMINENTsaveDire)
+                saveAttachment(PERMINENTsaveDire, filename, part.get_payload(decode=True))
 
+        # prints a devider b/t messages/emails
+        if DBUG: print("="*100)
+    
+    else:
 
-            # prints a devider b/t messages/emails
-            if DBUG: print("="*100)
+        if DBUG: print("MAIN: Not A Phone Verification Email: Should Delete")
+        # prints a devider b/t messages/emails
+        if DBUG: print("="*100)
 
 imap.close()
 imap.logout()
