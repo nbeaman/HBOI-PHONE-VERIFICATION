@@ -5,7 +5,7 @@ from PVEMAIL import PVEMAIL_GetEmailForIndex, PVEMAIL_GetAllEmailsInINBOX, PVEMA
    PVEMAIL_This_Is_A_Phone_Verification_Email, PVEMAIL_GetEmailBody, PVEMAIL_GetFileNameOfAttachment, PVEMAIL_GetEmailAttachment, PVEMAIL_getEmpFullNameFromBody,\
    PVEMAIL_getUsernameFromBody, PVEMAIL_AppendDateTimeToFileName, PVEMAIL_saveAttachment, PVEMAIL_Close_Connection_To_EmailServer, PVEMAIL_MoveEMailTo_ArchiveFolder_UnderInbox, PVEMAIL_MoveEMailTo_NotPhoneVerEmails_UnderInbox,\
    PVEMAIL_VAR_SAVEFORMROOTDIR
-
+from PVDB import PVDB_UserExists, PVDB_AddUser, PVDB_UpdateFullName, PVDB_AddPhoneVerRecord, PVDB_PhoneVerRecordExists, PVDB_UserHasFullNameEntered
 from TELLMOM import TELLMOM
 
 DBUG = 1
@@ -24,6 +24,19 @@ def checkDirectory(dir):
     if not os.path.isdir(dir):
         # make a folder
         os.mkdir(dir)
+
+def AddPhoneVerificationRecord(vUSERNAME, vFullname, vBILLPERIOD, vfilename):
+
+    if PVDB_UserExists(vUSERNAME) == False:
+        print("ADDING USER TO DB")
+        PVDB_AddUser(vUSERNAME, vFullname)
+
+    if PVDB_UserHasFullNameEntered(vUSERNAME, vFullname) == False:
+        PVDB_UpdateFullName(vUSERNAME, vFullname)
+
+    LinkToFile = "SAVEDFORMS\\" + BILLPERIOD + "\\" + vfilename + "#SAVEDFORMS\\" + BILLPERIOD + "\\" + vfilename + "#"
+
+    PVDB_AddPhoneVerRecord(vUSERNAME, vBILLPERIOD, vfilename, LinkToFile)
 
 
 # loops through each email in the array (messages) starting from the most recent message (counts backwards from N down to 1)
@@ -54,9 +67,12 @@ for i in range(messages, messages-N, -1): # DOES THIS N TIMES
         print("BILLPERIOD = >" + BILLPERIOD + "<")
         PERMINENTsaveDir = PVEMAIL_VAR_SAVEFORMROOTDIR + '\\' + BILLPERIOD
         checkDirectory(PERMINENTsaveDir)
-        PVEMAIL_saveAttachment(PERMINENTsaveDir, PVEMAIL_AppendDateTimeToFileName(filename), AttachedFilePayload)
+        FileNameWithDateTime = PVEMAIL_AppendDateTimeToFileName(filename)
+        PVEMAIL_saveAttachment(PERMINENTsaveDir, FileNameWithDateTime, AttachedFilePayload)
 
-        PVEMAIL_MoveEMailTo_ArchiveFolder_UnderInbox(i)
+        AddPhoneVerificationRecord(USERNAME, FULLNAME, BILLPERIOD, FileNameWithDateTime)
+
+        #PVEMAIL_MoveEMailTo_ArchiveFolder_UnderInbox(i)
 
     else:
         # This EMail is not a phone verification email, Move it, then delete it from the Inbox

@@ -4,6 +4,8 @@ from email.header import decode_header
 import os
 from datetime import datetime
 
+from credentials import credentials_USERNAME, credentials_PASSWORD
+
 DBUG = False
 
 #=================================[ VARIABLES USED ONLY IN THESE FUNCTIONS ]=======================
@@ -11,15 +13,13 @@ IMAP4_SERVER_NAME                           = "imap.mail.com"
 PVEMAIL_TEXT_IN_SUBJECT_MUST_CONTAIN_TXT    = "Telephone and Wireless Usage"
 PVEMAIL_VAR_ARCHIVE_EMAIL_FOLDER_NAME       = "OldPhoneVerEmails"
 PVEMAIL_VAR_NOT_PHONEVER_EMAIL_FOLDER_NAME  = "NotPhoneVerEmails"
-# account credentials
-USERNAME = "nbeaman@mail.com"
-PASSWORD = "5eaF00d!@"
+
 
 # create an IMAP4 class with SSL.  'imap' is used by most of the functions below 
 imap = imaplib.IMAP4_SSL(IMAP4_SERVER_NAME)
 
 # authenticate
-imap.login(USERNAME, PASSWORD)
+imap.login(credentials_USERNAME, credentials_PASSWORD)
 #===================================================================================================
 
 #=================================[ VARIABLES USED IN MAIN PROGRAM ]================================
