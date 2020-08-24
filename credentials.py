@@ -1,3 +1,3 @@
 # Email account credentials
-USERNAME = "email address"
-PASSWORD = "password"
+credentials_USERNAME = "your@email.address"
+credentials_PASSWORD = "yourPassword"
