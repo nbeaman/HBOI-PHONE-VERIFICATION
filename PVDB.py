@@ -1,5 +1,8 @@
 # importing the module
 import pyodbc
+
+DBUG = False
+
 conn = pyodbc.connect(r'Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=C:\app\PHONEVER\phoneverifications.accdb;')
 
 PVDB_DB_TEXT_RETURN_FOR_NULL_FIELD = 'None'
@@ -23,7 +26,7 @@ def PVDB_AddUser(vUsername, vFullname):
     else:
         cursor = conn.cursor()
         vSQL = "INSERT INTO Usernames ( Username, FullName ) VALUES ('" + vUsername + "', '" + vFullname + "')"
-        print(vSQL)
+        if DBUG: print("PVDB_AddUser: Added User: SQL ='" + vSQL + "'")
         cursor.execute(vSQL)
         conn.commit()
         return True
@@ -35,7 +38,7 @@ def PVDB_UserHasFullNameEntered(vUsername, vFullName):
     cursor.execute("SELECT * FROM Usernames WHERE Username = '" + vUsername + "';")
     rs = cursor.fetchall()
     FullnameInDB = str(rs[0][2])
-    print("DBDBDBDBDB>" + FullnameInDB + "DBDBDBDBDBDBDB")
+
     if FullnameInDB == PVDB_DB_TEXT_RETURN_FOR_NULL_FIELD:
         return False
     else:
@@ -49,7 +52,7 @@ def PVDB_UpdateFullName(vUsername, vFullName):
     else:
         cursor = conn.cursor()
         vSQL = "UPDATE Usernames SET FullName = '" + vFullName + "' WHERE Username = '" + vUsername + "';"
-        print(vSQL)
+        if DBUG: print("PVDB_UpdateFullname: Updated Full Name: SQL ='" + vSQL + "'")
         cursor.execute(vSQL)
         conn.commit()
         return True
@@ -63,7 +66,7 @@ def PVDB_AddPhoneVerRecord(vUsername, vBillPeriod, vFileName, vFileLink):
     else:
         cursor = conn.cursor()
         vSQL = "INSERT INTO PhoneVer (Username_id, billperiod, FileName, FileLink) VALUES (" + str(UsernameID) + ",'" + vBillPeriod + "', '" + vFileName + "', '" + vFileLink + "')"
-        print(vSQL)
+        if DBUG: print("PVDB_AddPhoneVerRecord: Phone Verification Record added: SQL ='" + vSQL + "'")
         cursor.execute(vSQL)
         conn.commit()
         return True
@@ -76,7 +79,6 @@ def PVDB_PhoneVerRecordExists(vUsername, vBillPeriod):
 
     cursor = conn.cursor()
     vSQL = "SELECT * FROM PhoneVer WHERE Username_id = " + str(UsernameID) + " AND billperiod = '" + vBillPeriod + "'"
-    print(vSQL)
     cursor.execute(vSQL)
     rs = cursor.fetchall()
 
@@ -85,3 +87,45 @@ def PVDB_PhoneVerRecordExists(vUsername, vBillPeriod):
     else:
         return rs[0][0]     # return Username Record ID
     cursor.close()
+
+def PVDB_ErrorCount( vFieldName, vAction):
+
+    cursor = conn.cursor()
+
+    if vAction == "ADD":
+         vSQL = "SELECT " + vFieldName + " FROM ErrorCount"
+         cursor.execute(vSQL)
+         rs = cursor.fetchall()
+         vCount = res[0][0]
+         vCount = vCount + 1
+         vSQL = "UPDATE ErrorCount SET " + vFieldName + " = " + str(vCount)
+         cursor.execute(vSQL)
+         conn.commit()
+         return vCount
+
+    elif vAction == "RETURN":
+
+         vSQL = "SELECT " + vFieldName + " FROM ErrorCount"
+         cursor.execute(vSQL)
+         rs = cursor.fetchall()
+         vCount = res[0][0]
+         return vCount
+
+    elif vAction == "CLEAR":
+
+         vSQL = "UPDATE ErrorCount SET " + vFieldName + " = 0"
+         cursor.execute(vSQL)
+         conn.commit()
+         return 0
+
+    cursor.close()
+
+def PVDB_ErrorCountDetails( vWhat, vDetails):
+
+    cursor = conn.cursor()
+    vSQL = "INSERT INTO ErrorCountDetails ( what, details ) VALUES ('" + str(vWhat) + "', '" + str(vDetails) + "')"
+    cursor.execute(vSQL)
+    conn.commit()
+    return True
+
+ 

@@ -2,18 +2,30 @@ import pdf2image
 from PIL import Image
 import time
 import os
-import shutil       # for deleting all files in TEMPFOLDER
+import shutil       # for deleting all files in PDFOCR_TEMPFOLDER
 
-DBUG = True
+#=================================[ FOR DEBUGGING ONLY APPLIES TO PVEMAIL CODE ]===================
+#  DBUG = False     : No Debugging
+#  DBUG = 1 or True : First (or low) level debugging
+#  DBUG = 2         : Medium debugging level
+#  DBUG = 3         : High - debug everything
+DBUG = False
+
+#==================================================================================================
+
+#=================================[ VARIABLES USED ONLY IN THE FUNCTIONS BELOW ]===================
+
+PDFOCR_TEMPFOLDER = r"C:\app\PHONEVER\TEMP"
+PDFOCR_TESSERACT_FILE_LOCATION = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 # Image to text conversion
 # Second line looks up Tesseract executable saved on computer
 import pytesseract as pt
-pt.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+pt.pytesseract.tesseract_cmd = PDFOCR_TESSERACT_FILE_LOCATION
 
-# Declare constants
-TEMPFOLDER = r"C:\app\PHONEVER\TEMP"
+#==================================================================================================
 
+#=================================[ FUNCTIONS USED IN THIS FILE ONLY ]=============================
 def pdftopil(PDFfileName):
     # This method reads a pdf and converts it into a sequence of images
     # PDF_PATH sets the path to the PDF file
@@ -35,10 +47,10 @@ def pdftopil(PDFfileName):
     STRICT = False
     FIRST_PAGE = None
     LAST_PAGE = None
-    PDF_PATH = os.path.join(TEMPFOLDER, PDFfileName)
+    PDF_PATH = os.path.join(PDFOCR_TEMPFOLDER, PDFfileName)
 
     start_time = time.time()
-    pil_images = pdf2image.convert_from_path(PDF_PATH, dpi=DPI, output_folder=TEMPFOLDER, first_page=FIRST_PAGE, last_page=LAST_PAGE, fmt=FORMAT, thread_count=THREAD_COUNT, userpw=USERPWD, use_cropbox=USE_CROPBOX, strict=STRICT)
+    pil_images = pdf2image.convert_from_path(PDF_PATH, dpi=DPI, output_folder=PDFOCR_TEMPFOLDER, first_page=FIRST_PAGE, last_page=LAST_PAGE, fmt=FORMAT, thread_count=THREAD_COUNT, userpw=USERPWD, use_cropbox=USE_CROPBOX, strict=STRICT)
     if DBUG: print("pdftopil: Time taken to convert PDF to jpg(s): " + str(time.time() - start_time))
     return pil_images
 
@@ -50,7 +62,7 @@ def save_images(pil_images, PDFfileName):
     index = 1
     FULLtext = ""
 
-    PDF_PATH = os.path.join(TEMPFOLDER, PDFfileName)
+    PDF_PATH = os.path.join(PDFOCR_TEMPFOLDER, PDFfileName)
 
     for image in pil_images:
         image.save(str(PDF_PATH[:-4]) + str(index) + ".jpg")
@@ -63,8 +75,8 @@ def save_images(pil_images, PDFfileName):
 
     return FULLtext
 
-def PDFOCR_DeleteAllTempFiles(TEMPF):
-    print("HERE")
+def DeleteAllTempFiles(TEMPF):
+
     for filename in os.listdir(TEMPF):
         file_path = os.path.join(TEMPF, filename)
         try:
@@ -81,13 +93,13 @@ def saveAttachmentForOCR(saveDir, filename, payload):
     # download attachment and save it
     open(filepath, "wb").write(payload)
 
-def PDFOCR_BillPeriod(PDFFILENAME, PAYLOAD):
-
-    saveAttachmentForOCR(TEMPFOLDER, PDFFILENAME, PAYLOAD)
+def GetPDF_TEXT(PDFFILENAME):
 
     pil_images = pdftopil(PDFFILENAME)
     pdfText = save_images(pil_images, PDFFILENAME)
-    #NeededInfo = ParsePDFtoGetNeededData(pdfText)
+    return pdfText
+
+def Parse_BillPeriod(PDFFILENAME, pdfText):
 
     # find the location of "Bill Period" in pdfText
     BillPeriodIndex = pdfText.find("Bill Period")
@@ -104,6 +116,39 @@ def PDFOCR_BillPeriod(PDFFILENAME, PAYLOAD):
     BillPeriod = BillPeriod.replace(chr(10),"")
     BillPeriod = BillPeriod.replace(chr(13),"")
 
-    PDFOCR_DeleteAllTempFiles(TEMPFOLDER)
-
     return BillPeriod
+
+def Parse_EmployeeFullName(PDFFILENAME, pdfText):
+
+    # find the location of "Full Name" in pdfText
+    FullNameIndex = pdfText.find("Full Name")
+    # print(FullNameIndex)
+    TempTXT = pdfText[FullNameIndex: FullNameIndex + (len(pdfText) - FullNameIndex)]
+    NewTXT = str(TempTXT)
+    # find the location of "Department Name" in TempText
+    EndTXT = NewTXT.find("Department Name")
+    # sets FullName to "Esther Guzman"
+    FullName = NewTXT[0:EndTXT]
+    # sets FullName to "Esther Guzman", removes "Full Name" text
+    FullName = FullName.replace("Full Name", "")
+    # remove CR and LF from BillPeriod, just leaving "Esther Guzman"
+    FullName = FullName.replace(chr(10), "")
+    FullName = FullName.replace(chr(13), "")
+    if DBUG: print("OCRtoText_EmployeeName: >>" + str(FullName) + "<<")
+
+    return FullName
+
+#==================================================================================================
+
+#=================================[ FUNCTION USED IN MAIN PROGRAME ]===============================
+def PDFOCR_GetBillPeriodAndFullName(PDFFILENAME, PAYLOAD):
+
+    saveAttachmentForOCR(PDFOCR_TEMPFOLDER, PDFFILENAME, PAYLOAD)
+    TXT = GetPDF_TEXT(PDFFILENAME)
+    vBillPeriod = Parse_BillPeriod(PDFFILENAME, TXT)
+    vFullName = Parse_EmployeeFullName(PDFFILENAME, TXT)
+    DeleteAllTempFiles(PDFOCR_TEMPFOLDER)
+
+    return vBillPeriod, vFullName
+
+#==================================================================================================
