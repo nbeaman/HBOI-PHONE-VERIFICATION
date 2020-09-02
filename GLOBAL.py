@@ -11,7 +11,6 @@ GLOBAL_PDFOCR_TESSERACT_FILE_LOCATION				= r'C:\Program Files\Tesseract-OCR\tess
 GLOBAL_IMAP4_SERVER_NAME                           = "imap.mailServer.com"
 GLOBAL_IMAP4_PORT_NUMBER                           = 993
 
-GLOBAL_PVEMAIL_VAR_ARCHIVE_EMAIL_FOLDER_NAME       = "OldPhoneVerEmails"
 GLOBAL_PVEMAIL_VAR_NOT_PHONEVER_EMAIL_FOLDER_NAME  = "NotPhoneVerEmails"
 
 GLOBAL_PVEMAIL_TEXT_IN_SUBJECT_MUST_CONTAIN_TXT    = "Telephone and Wireless Usage"
