@@ -3,7 +3,9 @@ import pyodbc
 
 DBUG = False
 
-conn = pyodbc.connect(r'Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=C:\app\PHONEVER\phoneverifications.accdb;')
+from GLOBAL import GLOBAL_PVDB_CONN
+
+conn = pyodbc.connect(r'Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=' + GLOBAL_PVDB_CONN + ';')
 
 PVDB_DB_TEXT_RETURN_FOR_NULL_FIELD = 'None'
 
@@ -59,13 +61,14 @@ def PVDB_UpdateFullName(vUsername, vFullName):
 
     cursor.close()
 
-def PVDB_AddPhoneVerRecord(vUsername, vBillPeriod, vFileName, vFileLink):
+def PVDB_AddPhoneVerRecord(vUsername, vBillPeriod, vFileName, vFileLink, vOdateTime, vOattachedFileName):
+    #INSERT INTO PhoneVer ( Username_id, OrigionalEmailDateTime ) values (239, #2020-07-23 13:37:00#)
     UsernameID = PVDB_UserExists(vUsername)
     if UsernameID == -1:
         return False
     else:
         cursor = conn.cursor()
-        vSQL = "INSERT INTO PhoneVer (Username_id, billperiod, FileName, FileLink) VALUES (" + str(UsernameID) + ",'" + vBillPeriod + "', '" + vFileName + "', '" + vFileLink + "')"
+        vSQL = "INSERT INTO PhoneVer (Username_id, billperiod, FileName, FileLink, OrigionalEmailDateTime, OrigionalAttachedFileName) VALUES (" + str(UsernameID) + ",'" + vBillPeriod + "', '" + vFileName + "', '" + vFileLink + "', #" + vOdateTime + "#, '" + vOattachedFileName + "')"
         if DBUG: print("PVDB_AddPhoneVerRecord: Phone Verification Record added: SQL ='" + vSQL + "'")
         cursor.execute(vSQL)
         conn.commit()
@@ -73,19 +76,18 @@ def PVDB_AddPhoneVerRecord(vUsername, vBillPeriod, vFileName, vFileLink):
 
     cursor.close()
 
-def PVDB_PhoneVerRecordExists(vUsername, vBillPeriod):
-
-    UsernameID = PVDB_UserExists(vUsername)
+def PVDB_PhoneVerRecordExists(vOrigAttachedFileName, vOrigDateTime):
 
     cursor = conn.cursor()
-    vSQL = "SELECT * FROM PhoneVer WHERE Username_id = " + str(UsernameID) + " AND billperiod = '" + vBillPeriod + "'"
+    vSQL = "SELECT * FROM PhoneVer WHERE OrigionalAttachedFileName = '" + str(vOrigAttachedFileName) + "' AND OrigionalEmailDateTime = #" + str(vOrigDateTime) + "#"
     cursor.execute(vSQL)
     rs = cursor.fetchall()
 
     if len(rs) == 0:
         return False
     else:
-        return rs[0][0]     # return Username Record ID
+        return True
+
     cursor.close()
 
 def PVDB_ErrorCount( vFieldName, vAction):

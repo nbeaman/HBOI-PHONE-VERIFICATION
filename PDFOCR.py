@@ -14,14 +14,12 @@ DBUG = False
 #==================================================================================================
 
 #=================================[ VARIABLES USED ONLY IN THE FUNCTIONS BELOW ]===================
-
-PDFOCR_TEMPFOLDER = r"C:\app\PHONEVER\TEMP"
-PDFOCR_TESSERACT_FILE_LOCATION = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+from GLOBAL import GLOBAL_PDFOCR_TEMPFOLDER, GLOBAL_PDFOCR_TESSERACT_FILE_LOCATION
 
 # Image to text conversion
 # Second line looks up Tesseract executable saved on computer
 import pytesseract as pt
-pt.pytesseract.tesseract_cmd = PDFOCR_TESSERACT_FILE_LOCATION
+pt.pytesseract.tesseract_cmd = GLOBAL_PDFOCR_TESSERACT_FILE_LOCATION
 
 #==================================================================================================
 
@@ -47,10 +45,10 @@ def pdftopil(PDFfileName):
     STRICT = False
     FIRST_PAGE = None
     LAST_PAGE = None
-    PDF_PATH = os.path.join(PDFOCR_TEMPFOLDER, PDFfileName)
+    PDF_PATH = os.path.join(GLOBAL_PDFOCR_TEMPFOLDER, PDFfileName)
 
     start_time = time.time()
-    pil_images = pdf2image.convert_from_path(PDF_PATH, dpi=DPI, output_folder=PDFOCR_TEMPFOLDER, first_page=FIRST_PAGE, last_page=LAST_PAGE, fmt=FORMAT, thread_count=THREAD_COUNT, userpw=USERPWD, use_cropbox=USE_CROPBOX, strict=STRICT)
+    pil_images = pdf2image.convert_from_path(PDF_PATH, dpi=DPI, output_folder=GLOBAL_PDFOCR_TEMPFOLDER, first_page=FIRST_PAGE, last_page=LAST_PAGE, fmt=FORMAT, thread_count=THREAD_COUNT, userpw=USERPWD, use_cropbox=USE_CROPBOX, strict=STRICT)
     if DBUG: print("pdftopil: Time taken to convert PDF to jpg(s): " + str(time.time() - start_time))
     return pil_images
 
@@ -62,7 +60,7 @@ def save_images(pil_images, PDFfileName):
     index = 1
     FULLtext = ""
 
-    PDF_PATH = os.path.join(PDFOCR_TEMPFOLDER, PDFfileName)
+    PDF_PATH = os.path.join(GLOBAL_PDFOCR_TEMPFOLDER, PDFfileName)
 
     for image in pil_images:
         image.save(str(PDF_PATH[:-4]) + str(index) + ".jpg")
@@ -89,7 +87,7 @@ def DeleteAllTempFiles(TEMPF):
 
 def saveAttachmentForOCR(saveDir, filename, payload):
     filepath=os.path.join(saveDir, filename)
-    print("FILE: PDFOCR: FILE PATH: " + filepath)
+    if DBUG: print("saveAttachmentForOCR: " + filepath)
     # download attachment and save it
     open(filepath, "wb").write(payload)
 
@@ -143,11 +141,11 @@ def Parse_EmployeeFullName(PDFFILENAME, pdfText):
 #=================================[ FUNCTION USED IN MAIN PROGRAME ]===============================
 def PDFOCR_GetBillPeriodAndFullName(PDFFILENAME, PAYLOAD):
 
-    saveAttachmentForOCR(PDFOCR_TEMPFOLDER, PDFFILENAME, PAYLOAD)
+    saveAttachmentForOCR(GLOBAL_PDFOCR_TEMPFOLDER, PDFFILENAME, PAYLOAD)
     TXT = GetPDF_TEXT(PDFFILENAME)
     vBillPeriod = Parse_BillPeriod(PDFFILENAME, TXT)
     vFullName = Parse_EmployeeFullName(PDFFILENAME, TXT)
-    DeleteAllTempFiles(PDFOCR_TEMPFOLDER)
+    DeleteAllTempFiles(GLOBAL_PDFOCR_TEMPFOLDER)
 
     return vBillPeriod, vFullName
 
