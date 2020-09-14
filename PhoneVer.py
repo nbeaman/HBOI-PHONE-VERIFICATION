@@ -4,8 +4,9 @@ from datetime import datetime
 from PDFOCR import PDFOCR_GetBillPeriodAndFullName
 from PVEMAIL import PVEMAIL_GetEmailForIndex, PVEMAIL_GetAllEmailsInINBOX, PVEMAIL_getSubject,\
    PVEMAIL_This_Is_A_Phone_Verification_Email, PVEMAIL_GetEmailBody, PVEMAIL_GetFileNameOfAttachment, PVEMAIL_GetEmailAttachment, PVEMAIL_getEmpFullNameFromBody,PVEMAIL_GetOrigionalEmailSentOnDate,\
-   PVEMAIL_getUsernameFromBody, PVEMAIL_AppendDateTimeToFileName, PVEMAIL_saveAttachment, PVEMAIL_Close_Connection_To_EmailServer, PVEMAIL_MoveEMailTo_ArchiveFolder_UnderInbox, PVEMAIL_MoveEMailTo_NotPhoneVerEmails_UnderInbox,\
-   PVEMAIL_VAR_SAVEFORMROOTDIR
+   PVEMAIL_getUsernameFromBody, PVEMAIL_AppendDateTimeToFileName, PVEMAIL_saveAttachment, PVEMAIL_Close_Connection_To_EmailServer, PVEMAIL_SET_FLAG_Delete_PhoneVerification_Email,\
+   PVEMAIL_MoveEMailTo_NotPhoneVerEmails_UnderInbox, PVEMAIL_Expunge_FLAGGED_Emails, PVEMAIL_Empty_Trash_Folder
+
 from PVDB import PVDB_UserExists, PVDB_AddUser, PVDB_UpdateFullName, PVDB_AddPhoneVerRecord, PVDB_PhoneVerRecordExists, PVDB_UserHasFullNameEntered
 from TELLMOM import TELLMOM
 
@@ -17,7 +18,7 @@ from TELLMOM import TELLMOM
 DBUG = False
 
 #===============================[ LOCAL VARS ]======================================
-from GLOBAL import GLOBAL_FOLDER_WHERE_FORMS_ARE_SAVED
+from GLOBAL import GLOBAL_FOLDER_WHERE_FORMS_ARE_SAVED, GLOBAL_APP_ROOT_DIRECTORY
 
 #===============================[ LOCAL FUNCTIONS ]=================================
 # check to see if the directory passed in (dir) exists, if it does not it is created
@@ -49,12 +50,12 @@ if status != 'OK':
     TELLMOM("MAIN: PVEMAIL_GetAllEmailsInINBOX: ", "status=>>" + status + "<<")
 
 # Just get the last three emails.  The code moves the emails and runs offten so it will eventually clear the Inbox
-N = 6
+N = 3
 # get the total number of emails in the Inbox stored in the array 'messages' - this is ALL emails in the Inbox
 # **** Not sure how messages turns from an array of all emails to an integer of the number of how many indexes in the array of itself? *****
 messages = int(messages[0])
 
-print("="*75)
+print("="*23 + "[ " + str(datetime.now()) + " ]" + "="*23)
 
 # loops through each email in the array (messages) starting from the most recent message (counts backwards from N down to 1)
 # the variable "i" is esentially the email Unique Identifier (UID) **********************
@@ -83,7 +84,7 @@ for i in range(messages, messages-N, -1): # DOES THIS N TIMES
         OrigionalAttachedFileName = filename
         ORIGIONAL_EMAIL_DATE_TIME = PVEMAIL_GetOrigionalEmailSentOnDate( BODY )
 
-        print("File: " + OrigionalAttachedFileName + ", Email Date: " + ORIGIONAL_EMAIL_DATE_TIME)
+        print("File: " + str(OrigionalAttachedFileName) + ", Email Date: " + str(ORIGIONAL_EMAIL_DATE_TIME))
 
         vIsAlreadyInDatabase = PVDB_PhoneVerRecordExists(OrigionalAttachedFileName, ORIGIONAL_EMAIL_DATE_TIME)
 
@@ -93,17 +94,19 @@ for i in range(messages, messages-N, -1): # DOES THIS N TIMES
             FULLNAME = PVEMAIL_getEmpFullNameFromBody(BODY)
             # now that we know the full name from the body, use it to help find the username in the email body
             USERNAME = PVEMAIL_getUsernameFromBody( BODY, FULLNAME)
+            print(">>" + USERNAME + "<<")
 
             # get the bill period and employee full name from the PDF using OCR
             PDF_BILLPERIOD, PDF_FullName = PDFOCR_GetBillPeriodAndFullName(filename, AttachedFilePayload)
 
-            if FULLNAME != PDF_FullName:
-               PVDB_ErrorCount( "FullNamesAreDifferent", "ADD")
-               PVDB_ErrorCountDetails( "FullNamesAreDifferent", "FULLNAME>" + FULLNAME + "< != PDF_FullName:>" + PDF_FullName + "<")
+            #if FULLNAME != PDF_FullName:
+               #PVDB_ErrorCount( "FullNamesAreDifferent", "ADD")
+               #PVDB_ErrorCountDetails( "FullNamesAreDifferent", "FULLNAME>" + FULLNAME + "< != PDF_FullName:>" + PDF_FullName + "<")
 
             if DBUG: print("MAIN: PDF_BILLPERIOD = >" + PDF_BILLPERIOD + "<")
             # set where to save the PDF (the directory)
-            PERMINENTsaveDir = PVEMAIL_VAR_SAVEFORMROOTDIR + '\\' + PDF_BILLPERIOD
+            PERMINENTsaveDir = GLOBAL_APP_ROOT_DIRECTORY + "\\" + GLOBAL_FOLDER_WHERE_FORMS_ARE_SAVED + "\\" + PDF_BILLPERIOD
+
             # check to see if the directory already exists, if not, create it
             checkDirectory(PERMINENTsaveDir)
             # add the current date and time to the end of the file attachment before the "."
@@ -116,25 +119,27 @@ for i in range(messages, messages-N, -1): # DOES THIS N TIMES
             AddPhoneVerificationRecord(USERNAME, PDF_FullName, PDF_BILLPERIOD, FileNameWithDateTime, ORIGIONAL_EMAIL_DATE_TIME, OrigionalAttachedFileName)
 
             # moved the processed Phone Verification email to the archive folder specified in the variable PVEMAIL_VAR_ARCHIVE_EMAIL_FOLDER_NAME
-            # PVEMAIL_MoveEMailTo_ArchiveFolder_UnderInbox(i)
+            PVEMAIL_SET_FLAG_Delete_PhoneVerification_Email(i)
 
             print("SUCCESS: PROCESSED AND STORED")
 
         else:
 
-            #PVEMAIL_MoveEMailTo_ArchiveFolder_UnderInbox(i)
+            PVEMAIL_SET_FLAG_Delete_PhoneVerification_Email(i)
             print("SKIPPED: ALREADY IN DATABASE")
 
 
     else:
         # This EMail is not a phone verification email, Move it to the email folder specified in the variable 
         # PVEMAIL_VAR_NOT_PHONEVER_EMAIL_FOLDER_NAME, then delete it from the Inbox
-        if DBUG: print("MAIN: Not A Phone Verification Email: Moved to NotPhoneVerEmails folder under Inbox, then Deleted from Inbox")
-        #PVEMAIL_MoveEMailTo_NotPhoneVerEmails_UnderInbox(i)
+        print("Not A Phone Verification Email: Moved to NotPhoneVerEmails folder under Inbox")
+        PVEMAIL_MoveEMailTo_NotPhoneVerEmails_UnderInbox(i)
     
     # prints a devider b/t messages/emails
     print("="*75)
 
+PVEMAIL_Expunge_FLAGGED_Emails()
+PVEMAIL_Empty_Trash_Folder()
 PVEMAIL_Close_Connection_To_EmailServer()
 
 #==================================================================================

@@ -27,7 +27,7 @@ DBUG = False
 # the "GLOBAL.py" file holds username and passwords.  It is seperate due to version repo (GitHub.com)
 # do not upload this file to GitHub as it is public and we do not want people to see this information
 
-from GLOBAL import GLOBAL_PVEMAIL_MAILBOX_USERNAME, GLOBAL_PVEMAIL_MAILBOX_PASSWORD, GLOBAL_IMAP4_SERVER_NAME, GLOBAL_IMAP4_PORT_NUMBER, GLOBAL_PVEMAIL_VAR_ARCHIVE_EMAIL_FOLDER_NAME,\
+from GLOBAL import GLOBAL_PVEMAIL_MAILBOX_USERNAME, GLOBAL_PVEMAIL_MAILBOX_PASSWORD, GLOBAL_IMAP4_SERVER_NAME, GLOBAL_IMAP4_PORT_NUMBER,\
    GLOBAL_PVEMAIL_VAR_NOT_PHONEVER_EMAIL_FOLDER_NAME, GLOBAL_PVEMAIL_TEXT_IN_SUBJECT_MUST_CONTAIN_TXT,GLOBAL_PVEMAIL_TEXT_BEGINING_OF_ORIGIONAL_BODY, GLOBAL_PVEMAIL_STR_BEFORE_DATE_SENT,\
    GLOBAL_PVEMAIL_STR_AFTER_DATE_SENT, GLOBAL_PVEMAIL_STR_BEFORE_FULLNAME, GLOBAL_PVEMAIL_STR_AFTER_FULLNAME, GLOBAL_PVEMAIL_STR_BEFORE_USERNAME,GLOBAL_PVEMAIL_STR_AFTER_USERNAME
 
@@ -77,18 +77,22 @@ def PVEMAIL_GetEmailForIndex(i):
             # somthing else went wrong
             TELLMOM("PVEMAIL_GetEmailForIndex(" + str(i) + ")","imap.fetch",e)
 
-def PVEMAIL_MoveEMailTo_ArchiveFolder_UnderInbox(i):
+def PVEMAIL_SET_FLAG_Delete_PhoneVerification_Email(i):
     # if you get a 'can't concat int to bytes' error, this means msgId needs to be a string
     # that is why the use of the 'str' function to convert it to a string.  
 
-    resp = imap.copy(str(i), GLOBAL_PVEMAIL_VAR_ARCHIVE_EMAIL_FOLDER_NAME)
-    if str(resp[0]) == 'NO':
-        TELLMOM("PVEMAIL_MoveEMailTo_ArchiveFolder_UnderInbox",str(resp))
-
     # Mark email as 'Deleted'
     imap.store(str(i), '+FLAGS', '\\Deleted')
+
+def PVEMAIL_Expunge_FLAGGED_Emails():
     # Delete all emails Marked as 'Deleted'
-    imap.expunge()
+    resp = imap.expunge()
+
+def PVEMAIL_Empty_Trash_Folder():
+    imap.select('Trash')  # select all trash
+    imap.store("1:*", '+FLAGS', '\\Deleted')  # Flag all Trash as Deleted
+    imap.expunge()  # not need if auto-expunge enabled
+
 
 def PVEMAIL_MoveEMailTo_NotPhoneVerEmails_UnderInbox(i):
     # If we find an email that is not a phone ver email, then this function is called. It
@@ -221,7 +225,7 @@ def PVEMAIL_GetEmailAttachment(EMail):
 
 def PVEMAIL_GetPortionOfBodyWeNeed( body):   
     EndIndex = body.find(GLOBAL_PVEMAIL_TEXT_BEGINING_OF_ORIGIONAL_BODY)
-    StartIndex = EndIndex - 400
+    StartIndex = EndIndex - 550
     tempTXT = body[StartIndex:EndIndex]
     return tempTXT
 
@@ -264,13 +268,13 @@ def PVEMAIL_getEmpFullNameFromBody( body ):
     body = PVEMAIL_GetPortionOfBodyWeNeed( body)
 
     # find the string stored in GLOBAL_PVEMAIL_STR_BEFORE_FULLNAME, and set tempTXT to "Nelson Beaman ..... rest of body)
-    GLOBAL_PVEMAIL_STR_BEFORE_FULLNAMEINDEX = body.find(GLOBAL_PVEMAIL_STR_BEFORE_FULLNAME)
-    tempTxt = body[GLOBAL_PVEMAIL_STR_BEFORE_FULLNAMEINDEX + len(GLOBAL_PVEMAIL_STR_BEFORE_FULLNAME) :GLOBAL_PVEMAIL_STR_BEFORE_FULLNAMEINDEX + 256]
-    if DBUG == 2: print("getEmpFullNameFromBody: GLOBAL_PVEMAIL_STR_BEFORE_FULLNAME is '" + GLOBAL_PVEMAIL_STR_BEFORE_FULLNAME + "' located at " + str(GLOBAL_PVEMAIL_STR_BEFORE_FULLNAMEINDEX) + " characters in of Body. tempTxt=>" + tempTxt + "<")
+    StringBeforeINDEX = body.find(GLOBAL_PVEMAIL_STR_BEFORE_FULLNAME)
+    tempTxt = body[StringBeforeINDEX + len(GLOBAL_PVEMAIL_STR_BEFORE_FULLNAME) :StringBeforeINDEX + 256]
+    if DBUG == 2: print("getEmpFullNameFromBody: GLOBAL_PVEMAIL_STR_BEFORE_FULLNAME is '" + GLOBAL_PVEMAIL_STR_BEFORE_FULLNAME + "' located at " + str(StringBeforeINDEX) + " characters in of Body. tempTxt=>" + tempTxt + "<")
     
     # find the string in tempTXT stored in GLOBAL_PVEMAIL_STR_AFTER_FULLNAME, and set EmpFullName to somthing like "Nelson Beaman  "
-    GLOBAL_PVEMAIL_STR_AFTER_FULLNAMEINDEX = tempTxt.find(GLOBAL_PVEMAIL_STR_AFTER_FULLNAME)
-    EmpFullName = tempTxt[0:GLOBAL_PVEMAIL_STR_AFTER_FULLNAMEINDEX-1]
+    StringAfterINDEX = tempTxt.find(GLOBAL_PVEMAIL_STR_AFTER_FULLNAME)
+    EmpFullName = tempTxt[0:StringAfterINDEX-1]
 
     # remove any space from the beginning and end of EmpFullName
     EmpFullName = EmpFullName.strip()
@@ -279,7 +283,7 @@ def PVEMAIL_getEmpFullNameFromBody( body ):
     EmpFullName = EmpFullName.replace(chr(10),"")
     EmpFullName = EmpFullName.replace(chr(13),"")
 
-    if DBUG == 2: print("PVEMAIL_getEmpFullNameFromBody: GLOBAL_PVEMAIL_STR_AFTER_FULLNAME is '" + GLOBAL_PVEMAIL_STR_AFTER_FULLNAME + "' located at " + str(GLOBAL_PVEMAIL_STR_AFTER_FULLNAMEINDEX) + " characters in of Body. EmpFullName=>" + EmpFullName + "<")
+    if DBUG == 2: print("PVEMAIL_getEmpFullNameFromBody: GLOBAL_PVEMAIL_STR_AFTER_FULLNAME is '" + GLOBAL_PVEMAIL_STR_AFTER_FULLNAME + "' located at " + str(StringAfterINDEX) + " characters in of Body. EmpFullName=>" + EmpFullName + "<")
     if DBUG: print("PVEMAIL_getEmpFullNameFromBody: Full Name from email body: >" + EmpFullName + "<")
 
     if len(EmpFullName) < 2:
@@ -290,23 +294,23 @@ def PVEMAIL_getEmpFullNameFromBody( body ):
         return (EmpFullName)
 
 
-def PVEMAIL_getUsernameFromBody( body, EmpName):
+def PVEMAIL_getUsernameFromBody( body, EmpFullName):
     #--------------------------------------------------------------------------------------------------
     # THIS FUNCTION ONLY WORKS IF THE EMPLOYEE'S FULL NAME IS BEFORE THE USERNAME WITHIN 256 CHARACTERS
     # Example: "<b>To:</b> Nelson Beaman &lt;nbeaman@fau.edu&gt;<br>"
     #--------------------------------------------------------------------------------------------------
     # Add Employee's Full Name to the begining of the string stored in GLOBAL_PVEMAIL_STR_BEFORE_USERNAME
     # for example "Nelson Beaman &lt;"
-    StringBeforeUsername = EmpName + GLOBAL_PVEMAIL_STR_BEFORE_USERNAME
+    UFullName=""
 
     body = PVEMAIL_GetPortionOfBodyWeNeed( body)
 
-    # Find the text StringBeforeUsername, then set tempTXT to all the text after that
+    # Find the User's Full Name in body, then set tempTXT to all the text after that
     # because we know the username is found just after the employee's full name in the body of the email
-    StringBeforeINDEX = body.find(StringBeforeUsername)
-    tempTxt = body[StringBeforeINDEX + len(StringBeforeUsername) :StringBeforeINDEX + 256]
+    EmpFullNameINDEX = body.find(EmpFullName)
+    tempTxt = body[EmpFullNameINDEX + len(EmpFullName) :EmpFullNameINDEX + 256]
 
-    if DBUG == 2: print("getUsernameFromBody: StringBeforeUsername is '" + StringBeforeUsername + "' located at " + str(StringBeforeINDEX) + " characters in of Body. tempTxt=>" + tempTxt + "<")
+    if DBUG == 2: print("getUsernameFromBody: EmpFullName is '" + EmpFullName + "' located at " + str(EmpFullNameINDEX) + " characters in of Body. tempTxt=>" + tempTxt + "<")
 
     # find the string stored in GLOBAL_PVEMAIL_STR_AFTER_USERNAME, then return all of the text BEFORE this text
     StringAfterINDEX = tempTxt.find(GLOBAL_PVEMAIL_STR_AFTER_USERNAME)
@@ -320,10 +324,20 @@ def PVEMAIL_getUsernameFromBody( body, EmpName):
 
     if DBUG == 2: print("getUsernameFromBody: GLOBAL_PVEMAIL_STR_AFTER_USERNAME is '" + GLOBAL_PVEMAIL_STR_AFTER_USERNAME + "' located at " + str(StringAfterINDEX) + " characters in of Body. EmpUsername=>" + EmpUsername + "<")
 
-    if len(EmpUsername) < 2:
+    FoundFirstNonAlpha=False
+    for i in range(0, len(EmpUsername)):
+        CChar = EmpUsername[len(EmpUsername)-1 - i:len(EmpUsername)-i]
+        if (CChar.isalnum() == False) and CChar != '.' and CChar!='-' and CChar!='_': 
+            FoundFirstNonAlpha = True 
+        if FoundFirstNonAlpha == False:
+            UFullName = UFullName + CChar
+    # UFullName is the username backward b/c we started from the end of the username. [::-1] reverses the string
+    UFullName = UFullName[::-1]
+
+    if len(UFullName) < 2:
         TELLMOM("PVEMAIL_getUsernameFromBody", "USERNAME from body is too short (may not be a username). EmpUsername=>>" + EmpUsername + "<<")
     else:
-        return (EmpUsername)
+        return (UFullName)
 
 #------------------------------------------------------------------
 #---------------[ END OF: PARSING BODY TEXT FUNCTIONS ]------------
