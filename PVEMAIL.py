@@ -200,6 +200,10 @@ def PVEMAIL_GetFileNameOfAttachment(EMail):
     return filename
 
 def PVEMAIL_GetEmailAttachment(EMail):
+    filename=""
+    AttachedFilePayload=""
+    content_type=""
+    content_disposition=""
     # run through each "part" of the email in this for loop
     for part in EMail.walk():     #usually has 5 parts to iterate through
         # extract content type of the current email "part"
@@ -213,7 +217,7 @@ def PVEMAIL_GetEmailAttachment(EMail):
             AttachedFilePayload = part.get_payload(decode=True)
 
     if len(AttachedFilePayload) <256:
-        TELLMOM:("PVEMAIL_GetEmailAttachment:", "No Attachment Found")
+        TELLMOM("PVEMAIL_GetEmailAttachment:", "No Attachment Found")
     else:
         return filename, AttachedFilePayload
 
@@ -225,8 +229,11 @@ def PVEMAIL_GetEmailAttachment(EMail):
 
 def PVEMAIL_GetPortionOfBodyWeNeed( body):   
     EndIndex = body.find(GLOBAL_PVEMAIL_TEXT_BEGINING_OF_ORIGIONAL_BODY)
-    StartIndex = EndIndex - 550
+    StartIndex = EndIndex - 700
+    if StartIndex < 0: StartIndex = 0
     tempTXT = body[StartIndex:EndIndex]
+    SentTXTindex = tempTXT.find(GLOBAL_PVEMAIL_STR_BEFORE_DATE_SENT)
+    tempTXT = tempTXT[SentTXTindex:]
     return tempTXT
 
 def PVEMAIL_GetOrigionalEmailSentOnDate( body):
@@ -237,19 +244,37 @@ def PVEMAIL_GetOrigionalEmailSentOnDate( body):
     StartIndex = body.find(GLOBAL_PVEMAIL_STR_BEFORE_DATE_SENT)
     StartIndex = StartIndex + len(GLOBAL_PVEMAIL_STR_BEFORE_DATE_SENT)
 
-    textTMP = body[StartIndex:StartIndex+50]
+    textTMP = body[StartIndex:StartIndex+100]
     EndIndex = textTMP.find(GLOBAL_PVEMAIL_STR_AFTER_DATE_SENT)
     textTMP = textTMP[0:EndIndex]
     textTMP = textTMP.strip()
 
+    AM_Index = textTMP.find('AM')
+    PM_Index = textTMP.find('PM')
+
+    if (AM_Index>=0):
+       textTMP = textTMP[0:AM_Index + 2]
+    if (PM_Index>=0):
+       textTMP = textTMP[0:PM_Index + 2]
+    
     #textTMP = 'Thursday, July 23, 2020 1:37 PM'
 
     try:
          DateTime = datetime.strptime(textTMP,'%A, %B %d, %Y %I:%M %p')
          return str(DateTime)
 
-    except Exception as e:
-        TELLMOM:("PVEMAIL_GetOrigionalEmailSentOnDate:", "Could not get date time from email Body of origional email", e)
+    except:
+        pass
+
+    try:
+         DateTime = datetime.strptime(textTMP,'%A, %B %d, %Y %I:%M:%S %p')
+         return str(DateTime)
+
+    except:
+        pass
+
+    if len(DateTime) < 5:
+         TELLMOM:("PVEMAIL_GetOrigionalEmailSentOnDate:", "Could not get date time from email Body of origional email", e)
 
 
     #GLOBAL_PVEMAIL_STR_BEFORE_DATE_SENT                = "<b>Sent:</b>"
@@ -288,10 +313,14 @@ def PVEMAIL_getEmpFullNameFromBody( body ):
 
     if len(EmpFullName) < 2:
         TELLMOM("PVEMAIL_getEmpFullNameFromBody", "FULLNAME from body is too short (may not be a name). FULLNAME=>>" + EmpFullName + "<<")
-    elif EmpFullName.find(" ") == -1:
-        TELLMOM("PVEMAIL_getEmpFullNameFromBody", "FULLNAME from body has no spaces in it (may not be a name). FULLNAME=>>" + EmpFullName + "<<")
     else:
         return (EmpFullName)
+
+def PVEMAIL_GetUsernameFromAttachedFileName(FN):
+
+    dotIndex = FN.find('.')
+    textTMP = FN[0:dotIndex]
+    return(textTMP)
 
 
 def PVEMAIL_getUsernameFromBody( body, EmpFullName):
@@ -334,10 +363,7 @@ def PVEMAIL_getUsernameFromBody( body, EmpFullName):
     # UFullName is the username backward b/c we started from the end of the username. [::-1] reverses the string
     UFullName = UFullName[::-1]
 
-    if len(UFullName) < 2:
-        TELLMOM("PVEMAIL_getUsernameFromBody", "USERNAME from body is too short (may not be a username). EmpUsername=>>" + EmpUsername + "<<")
-    else:
-        return (UFullName)
+    return (UFullName)
 
 #------------------------------------------------------------------
 #---------------[ END OF: PARSING BODY TEXT FUNCTIONS ]------------

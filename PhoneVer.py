@@ -5,7 +5,7 @@ from PDFOCR import PDFOCR_GetBillPeriodAndFullName
 from PVEMAIL import PVEMAIL_GetEmailForIndex, PVEMAIL_GetAllEmailsInINBOX, PVEMAIL_getSubject,\
    PVEMAIL_This_Is_A_Phone_Verification_Email, PVEMAIL_GetEmailBody, PVEMAIL_GetFileNameOfAttachment, PVEMAIL_GetEmailAttachment, PVEMAIL_getEmpFullNameFromBody,PVEMAIL_GetOrigionalEmailSentOnDate,\
    PVEMAIL_getUsernameFromBody, PVEMAIL_AppendDateTimeToFileName, PVEMAIL_saveAttachment, PVEMAIL_Close_Connection_To_EmailServer, PVEMAIL_SET_FLAG_Delete_PhoneVerification_Email,\
-   PVEMAIL_MoveEMailTo_NotPhoneVerEmails_UnderInbox, PVEMAIL_Expunge_FLAGGED_Emails, PVEMAIL_Empty_Trash_Folder
+   PVEMAIL_MoveEMailTo_NotPhoneVerEmails_UnderInbox, PVEMAIL_Expunge_FLAGGED_Emails, PVEMAIL_Empty_Trash_Folder, PVEMAIL_GetUsernameFromAttachedFileName
 
 from PVDB import PVDB_UserExists, PVDB_AddUser, PVDB_UpdateFullName, PVDB_AddPhoneVerRecord, PVDB_PhoneVerRecordExists, PVDB_UserHasFullNameEntered
 from TELLMOM import TELLMOM
@@ -83,6 +83,8 @@ for i in range(messages, messages-N, -1): # DOES THIS N TIMES
 
         OrigionalAttachedFileName = filename
         ORIGIONAL_EMAIL_DATE_TIME = PVEMAIL_GetOrigionalEmailSentOnDate( BODY )
+        if ORIGIONAL_EMAIL_DATE_TIME == "None":
+            TELLMOM("MAIN: ORIGIONAL_EMAIL_DATE_TIME: ", "Could Not Get Email Date")
 
         print("File: " + str(OrigionalAttachedFileName) + ", Email Date: " + str(ORIGIONAL_EMAIL_DATE_TIME))
 
@@ -94,6 +96,11 @@ for i in range(messages, messages-N, -1): # DOES THIS N TIMES
             FULLNAME = PVEMAIL_getEmpFullNameFromBody(BODY)
             # now that we know the full name from the body, use it to help find the username in the email body
             USERNAME = PVEMAIL_getUsernameFromBody( BODY, FULLNAME)
+            if len(USERNAME)<2:
+                USERNAME = PVEMAIL_GetUsernameFromAttachedFileName(filename)
+            if len(USERNAME)<2:
+                TELLMOM("MAIN: USERNAME: ", "Could Not Get USERNAME")
+
             print(">>" + USERNAME + "<<")
 
             # get the bill period and employee full name from the PDF using OCR
