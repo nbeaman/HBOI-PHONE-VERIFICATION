@@ -1,14 +1,17 @@
 # Email account credentials
-GLOBAL_PVEMAIL_MAILBOX_USERNAME = "email@address.com"
-GLOBAL_PVEMAIL_MAILBOX_PASSWORD = "mailboxPassword"
+GLOBAL_PVEMAIL_MAILBOX_USERNAME = "mailboxname@mail.com"
+GLOBAL_PVEMAIL_MAILBOX_PASSWORD = "ThePassword"
 
+GLOBAL_TELLMOM_WHO_TO_ALERT = "asdf@asdf.edu, aaaaa@aaaa.edu"
+
+GLOBAL_APP_ROOT_DIRECTORY                           = r"C:\APP\PVDatabase$"
 GLOBAL_FOLDER_WHERE_FORMS_ARE_SAVED					= "SAVEDFORMS"
-GLOBAL_PVDB_CONN									= r'C:\myapp\database\databaseName.accdb'
+GLOBAL_PVDB_CONN									= r'C:\APP\PVDatabase$\phoneverifications.accdb'
 
-GLOBAL_PDFOCR_TEMPFOLDER							= r"C:\myapp\TEMP"
+GLOBAL_PDFOCR_TEMPFOLDER							= r"C:\APP\TEMP"
 GLOBAL_PDFOCR_TESSERACT_FILE_LOCATION				= r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
-GLOBAL_IMAP4_SERVER_NAME                           = "imap.mailServer.com"
+GLOBAL_IMAP4_SERVER_NAME                           = "imap.mail.com"
 GLOBAL_IMAP4_PORT_NUMBER                           = 993
 
 GLOBAL_PVEMAIL_VAR_NOT_PHONEVER_EMAIL_FOLDER_NAME  = "NotPhoneVerEmails"
@@ -24,4 +27,4 @@ GLOBAL_PVEMAIL_STR_AFTER_DATE_SENT                 = "<br>"
 GLOBAL_PVEMAIL_STR_BEFORE_FULLNAME                 = "<b>To:</b>"
 GLOBAL_PVEMAIL_STR_AFTER_FULLNAME                  = "&lt;"
 GLOBAL_PVEMAIL_STR_BEFORE_USERNAME                 = " &lt;"
-GLOBAL_PVEMAIL_STR_AFTER_USERNAME                  = "@fau.edu"
+GLOBAL_PVEMAIL_STR_AFTER_USERNAME                  = "@asdf.edu"

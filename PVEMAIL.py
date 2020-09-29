@@ -47,7 +47,7 @@ except Exception as e:
     TELLMOM("PVEMAIL MAIN: imap.login", "PROBLEM AUTHENTICATING TO SERVER NAME: " + GLOBAL_IMAP4_SERVER_NAME + " ON PORT: " + str(GLOBAL_IMAP4_PORT_NUMBER) + ") Check GLOBAL.py file", e)
 
 #===================================================================================================
-
+#TELLMOM("MAIN CODE", "Just Testing TELLMOM", "Error: No just testing")
 #=================================[ VARIABLES USED IN MAIN PROGRAM (program that imports PVEMAIL]===
 PVEMAIL_VAR_SAVEFORMROOTDIR                 = r"C:\app\PHONEVER\SAVEDFORMS"
 #===================================================================================================
@@ -180,10 +180,7 @@ def PVEMAIL_GetEmailBody(EMail):
         except:
             pass
 
-    if len(body) < 256:
-        TELLMOM("PVEMAIL_GetEmailBody", "body is too short. body=>>" + str(body) + "<<")
-    else:
-        return (body)
+    return (body)
 
 def PVEMAIL_GetFileNameOfAttachment(EMail):
     # run through each "part" of the email in this for loop
@@ -274,7 +271,7 @@ def PVEMAIL_GetOrigionalEmailSentOnDate( body):
         pass
 
     if len(DateTime) < 5:
-         TELLMOM:("PVEMAIL_GetOrigionalEmailSentOnDate:", "Could not get date time from email Body of origional email", e)
+         TELLMOM("PVEMAIL_GetOrigionalEmailSentOnDate:", "Could not get date time from email Body of origional email", e)
 
 
     #GLOBAL_PVEMAIL_STR_BEFORE_DATE_SENT                = "<b>Sent:</b>"

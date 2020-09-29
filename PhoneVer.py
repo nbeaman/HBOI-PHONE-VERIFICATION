@@ -75,6 +75,10 @@ for i in range(messages, messages-N, -1): # DOES THIS N TIMES
     if PVEMAIL_This_Is_A_Phone_Verification_Email(SUBJECT):
         
         BODY = PVEMAIL_GetEmailBody(EMail)
+        if len(BODY)<1:
+            PVEMAIL_MoveEMailTo_NotPhoneVerEmails_UnderInbox(i)
+            PVEMAIL_SET_FLAG_Delete_PhoneVerification_Email(i)
+            TELLMOM("PVEMAIL_GetEmailBody", "body is too short. Length of BODY=>>" + str(len(BODY)) + "<<: emailInex:" + str(i))
 
         SENTDATE = PVEMAIL_GetOrigionalEmailSentOnDate(BODY)
 
@@ -95,9 +99,9 @@ for i in range(messages, messages-N, -1): # DOES THIS N TIMES
             # this FULLNAME is used to find the username in the body b/c it comes before the username in the body of the email
             FULLNAME = PVEMAIL_getEmpFullNameFromBody(BODY)
             # now that we know the full name from the body, use it to help find the username in the email body
-            USERNAME = PVEMAIL_getUsernameFromBody( BODY, FULLNAME)
-            if len(USERNAME)<2:
-                USERNAME = PVEMAIL_GetUsernameFromAttachedFileName(filename)
+            #USERNAME = PVEMAIL_getUsernameFromBody( BODY, FULLNAME)
+            #if len(USERNAME)<2:
+            USERNAME = PVEMAIL_GetUsernameFromAttachedFileName(filename)
             if len(USERNAME)<2:
                 TELLMOM("MAIN: USERNAME: ", "Could Not Get USERNAME")
 

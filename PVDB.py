@@ -4,8 +4,12 @@ import pyodbc
 DBUG = False
 
 from GLOBAL import GLOBAL_PVDB_CONN
+from TELLMOM import TELLMOM
 
-conn = pyodbc.connect(r'Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=' + GLOBAL_PVDB_CONN + ';')
+try:
+    conn = pyodbc.connect(r'Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=' + GLOBAL_PVDB_CONN + ';')
+except Exception as e:
+    TELLMOM("MAIN: ", "conn = connectionString", e)
 
 PVDB_DB_TEXT_RETURN_FOR_NULL_FIELD = 'None'
 
