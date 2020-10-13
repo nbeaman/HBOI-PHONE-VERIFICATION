@@ -214,9 +214,11 @@ def PVEMAIL_GetEmailAttachment(EMail):
             AttachedFilePayload = part.get_payload(decode=True)
 
     if len(AttachedFilePayload) <256:
-        TELLMOM("PVEMAIL_GetEmailAttachment:", "No Attachment Found")
-    else:
-        return filename, AttachedFilePayload
+        #TELLMOM("PVEMAIL_GetEmailAttachment:", "No Attachment Found")
+        filename = ""
+        AttachedFilePayload=""
+
+    return filename, AttachedFilePayload
 
 
 #------------------------------------------------------------------

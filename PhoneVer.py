@@ -1,4 +1,5 @@
 import os
+import sys
 from datetime import datetime
 
 from PDFOCR import PDFOCR_GetBillPeriodAndFullName
@@ -84,6 +85,11 @@ for i in range(messages, messages-N, -1): # DOES THIS N TIMES
 
         #filename = PVEMAIL_GetFileNameOfAttachment(EMail)
         filename, AttachedFilePayload = PVEMAIL_GetEmailAttachment(EMail)
+
+        if filename=="":
+            PVEMAIL_MoveEMailTo_NotPhoneVerEmails_UnderInbox(i)
+            print("MAIN: Phone Verification Email with NO attachment: move to NotPhoneVerEmail folder in mailbox and exited script")
+            sys.exit('Execution of code stopped by TELLMOM')
 
         OrigionalAttachedFileName = filename
         ORIGIONAL_EMAIL_DATE_TIME = PVEMAIL_GetOrigionalEmailSentOnDate( BODY )
